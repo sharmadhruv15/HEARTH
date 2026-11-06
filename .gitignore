@@ -1,0 +1,32 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments & secrets
+.env
+.env.*
+*.pem
+*.key
+*.cert
+.venv/
+venv/
+env/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor configs
+.vscode/
+.idea/
+
+# Local logs & runtime temp
+*.log
+/tmp/
+
+# Model adapter weights (Uncomment if you do NOT want to push ~83MB of weights to GitHub)
+# outputs/
+# *.safetensors
+# *.pt

@@ -1,0 +1,92 @@
+version: "3.8"
+
+# Hearth — Federated LoRA Personal Assistant
+# Three isolated clients share only LoRA attention weights.
+# Raw data never leaves each client container.
+# Clients start sequentially (depends_on) to respect 4GB VRAM constraint
+# -- only one client trains at a time, since Phi-3-mini needs ~4GB in 4-bit.
+
+networks:
+  hearth_net:
+    driver: bridge
+
+services:
+
+  # ── FL Server (CPU only -- just aggregates weight arrays, no GPU needed) ────
+  server:
+    build: ./server
+    container_name: hearth_server
+    ports:
+      - "8080:8080"
+    networks:
+      - hearth_net
+    restart: on-failure
+
+  # ── Mom Client ───────────────────────────────────────────────────────────────
+  client_mom:
+    build: ./client
+    container_name: hearth_client_mom
+    environment:
+      - CLIENT_NAME=mom
+      - SERVER_ADDR=server:8080
+    volumes:
+      - ./data/mom:/data:ro              # read-only mount -- data cannot escape
+      - ./outputs/mom_adapter:/adapters/mom_adapter
+    networks:
+      - hearth_net
+    depends_on:
+      - server
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: on-failure
+
+  # ── Dad Client ───────────────────────────────────────────────────────────────
+  client_dad:
+    build: ./client
+    container_name: hearth_client_dad
+    environment:
+      - CLIENT_NAME=dad
+      - SERVER_ADDR=server:8080
+    volumes:
+      - ./data/dad:/data:ro              # read-only mount
+      - ./outputs/dad_adapter:/adapters/dad_adapter
+    networks:
+      - hearth_net
+    depends_on:
+      - client_mom                       # start after mom finishes to respect 4GB VRAM limit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: on-failure
+
+  # ── You Client ───────────────────────────────────────────────────────────────
+  client_you:
+    build: ./client
+    container_name: hearth_client_you
+    environment:
+      - CLIENT_NAME=you
+      - SERVER_ADDR=server:8080
+    volumes:
+      - ./data/you:/data:ro              # read-only mount
+      - ./outputs/you_adapter:/adapters/you_adapter
+    networks:
+      - hearth_net
+    depends_on:
+      - client_dad                       # start after dad finishes
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: on-failure

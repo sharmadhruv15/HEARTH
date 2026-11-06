@@ -1,0 +1,7 @@
+flwr>=1.12.0
+torch
+transformers
+peft
+bitsandbytes
+accelerate
+datasets
